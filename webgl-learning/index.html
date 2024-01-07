@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL Learning</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="webgl-canvas"></canvas>
+
+    <script>
+        window.onload = function() {
+            // 캔버스 엘리먼트 가져오기
+            var canvas = document.getElementById("webgl-canvas");
+
+            // WebGL 컨텍스트 생성
+            var gl = canvas.getContext("webgl");
+
+            // WebGL 컨텍스트가 지원되지 않을 경우 경고
+            if (gl) {
+                gl.viewportWidth = canvas.width;
+                gl.viewportHeight = canvas.height;
+            } else {
+                console.error("Unable to initialize WebGL. Your browser may not support it.");
+                return;
+            }
+
+            // 버텍스 쉐이더 소스 코드
+            var vertexShaderSource = `
+                attribute vec4 a_position;
+                void main() {
+                    gl_Position = a_position;
+                }
+            `;
+
+            // 프래그먼트 쉐이더 소스 코드
+            var fragmentShaderSource = `
+                precision mediump float;
+                void main() {
+                    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); // 빨간색
+                }
+            `;
+
+            // 쉐이더 컴파일 함수
+            function compileShader(gl, source, type) {
+                var shader = gl.createShader(type);
+                gl.shaderSource(shader, source);
+                gl.compileShader(shader);
+
+                if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                    console.error("Shader compilation failed:", gl.getShaderInfoLog(shader));
+                    gl.deleteShader(shader);
+                    return null;
+                }
+
+                return shader;
+            }
+
+            // 버텍스 쉐이더와 프래그먼트 쉐이더 컴파일
+            var vertexShader = compileShader(gl, vertexShaderSource, gl.VERTEX_SHADER);
+            var fragmentShader = compileShader(gl, fragmentShaderSource, gl.FRAGMENT_SHADER);
+
+            // 프로그램 생성 및 연결
+            var program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error("Program linking failed:", gl.getProgramInfoLog(program));
+                return;
+            }
+
+            // 프로그램 사용
+            gl.useProgram(program);
+
+            // 삼각형의 버텍스 좌표
+            var vertices = new Float32Array([
+                0.0,  0.0,
+               -1.0, -1.0,
+                1.0, -1.0
+            ]);
+
+            // WebGL 버퍼 생성
+            var vertexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+            // attribute 변수 설정
+            var positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+            gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(positionAttributeLocation);
+
+            // 그리기
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 2);
+        };
+    </script>
+</body>
+</html>
