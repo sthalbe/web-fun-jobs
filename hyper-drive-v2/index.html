@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta charset="UTF-8">
+        <title>Hyper-drive v2</title>
+        <style type="text/css">
+            body {
+                margin: 0;
+                overflow: hidden;
+            }
+            canvas{
+                display: block;
+                border: 1px solid black;
+            }
+            #warpImage {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                opacity: 0;
+                transition: width 0.25s ease-out, height 0.25s ease-out, opacity 0.25s ease-out;
+            }
+        </style>
+        
+    </head>
+    <body>
+        <canvas id="mainCanvas"></canvas>
+        <img id="warpImage" src="warp_effect.png" alt="Warp Effect">
+        <script type="module" src="src/main.js"></script>
+    </body>
+</html>
