@@ -15,34 +15,10 @@ function mapValue(value, inMin, inMax, outMin, outMax) {
     return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
 }
 
-let initialTouchY = 0; // 터치 시작 Y 좌표
-let currentSpeed = 0; // 현재 속도
-
-// 터치 시작 이벤트
-mainCanvas.addEventListener("touchstart", function(event) {
-    initialTouchY = event.touches[0].clientY; // 터치 시작 Y 좌표 저장
-});
-
-// 터치 이동 이벤트
-mainCanvas.addEventListener("touchmove", function(event) {
-    const currentTouchY = event.touches[0].clientY; // 현재 터치 Y 좌표
-    const distance = currentTouchY - initialTouchY; // 이동 거리
-
-    // 거리의 변화를 통해 속도 조정
-    if (distance < 0) { // 위로 드래그
-        starSpeed = Math.min(20, starSpeed + Math.abs(distance) / 50); // 최대 속도 제한
-    } else if (distance > 0) { // 아래로 드래그
-        starSpeed = Math.max(0.1, starSpeed - distance / 50); // 최소 속도 제한
-    }
-});
-
-// 터치 종료 이벤트
-mainCanvas.addEventListener("touchend", function(event) {
-    // 터치 종료 시 속도를 리셋하거나 다른 동작을 추가할 수 있습니다.
-});
-
-document.addEventListener("mousemove", function(event) {
-    starSpeed = mapValue(event.clientX, 0, GAME_WIDTH, 0.1, 20);
+const slider = document.querySelector('.speed-slider');
+slider.addEventListener('input', function(event) {
+    starSpeed = parseFloat(event.target.value);
+    starSpeed = mapValue(starSpeed, 0, GAME_WIDTH, 0.1, GAME_WIDTH / 2);
 });
 
 function randomRange(min, max) {
@@ -76,8 +52,8 @@ function updateStar(star)
 
 function drawLine(context, x1, y1, x2, y2) {
     context.beginPath();
-    let alpha = mapValue(starSpeed, 0, 20, 0.1, 0.9);
-    let lineWidth = mapValue(starSpeed, 0, 20, 0.1, 2);
+    let alpha = mapValue(starSpeed, 0, GAME_WIDTH / 2, 0.1, 0.9);
+    let lineWidth = mapValue(starSpeed, 0, GAME_WIDTH / 2, 0.1, 2);
     context.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
     context.lineWidth = lineWidth;
     context.moveTo(x1, y1);
@@ -94,7 +70,7 @@ function drawStar(context, star, dtBlink)
     let scaledX = mapValue(star.x/star.z, 0, 1, 0, GAME_WIDTH);
     let scaledY = mapValue(star.y/star.z, 0, 1, 0, GAME_HEIGHT);
     
-    let r = Math.max(mapValue(star.z, 0, GAME_WIDTH, 3, 0), 0.1);
+    let r = Math.max(mapValue(star.z, 0, GAME_WIDTH, 2, 0), 0.1);
     
     context.fillStyle = "white";
     context.strokeStyle = "transparent";
@@ -103,6 +79,11 @@ function drawStar(context, star, dtBlink)
     context.fill();
 
     if (star.isBlinking) {
+        if(starSpeed >= 5)
+        {
+            star.isBlinking = false;
+        }
+
         if(dtBlink > starBlinkInterval * 0.5){
             brightnessSign = -1;
         }
