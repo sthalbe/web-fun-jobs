@@ -1,34 +1,53 @@
 const mainCanvas = document.getElementById("mainCanvas");
 const context = mainCanvas.getContext("2d");
-const GAME_WIDTH = 800;
-const GAME_HEIGHT = 800;
-mainCanvas.width = GAME_WIDTH;
-mainCanvas.height = GAME_HEIGHT;
+let GAME_WIDTH = 0;
+let GAME_HEIGHT = 0;
+function resizeCanvas() {
+    mainCanvas.width = window.innerWidth;
+    mainCanvas.height = window.innerHeight;
+    GAME_WIDTH = window.innerWidth;
+    GAME_HEIGHT = window.innerHeight
+}
 
+resizeCanvas(); // 초기 크기 설정
+window.addEventListener("resize", resizeCanvas); // 창 크기 변경 시 업데이트
 function mapValue(value, inMin, inMax, outMin, outMax) {
     return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
 }
-  
+
+let initialTouchY = 0; // 터치 시작 Y 좌표
+let currentSpeed = 0; // 현재 속도
+
+// 터치 시작 이벤트
+mainCanvas.addEventListener("touchstart", function(event) {
+    initialTouchY = event.touches[0].clientY; // 터치 시작 Y 좌표 저장
+});
+
+// 터치 이동 이벤트
+mainCanvas.addEventListener("touchmove", function(event) {
+    const currentTouchY = event.touches[0].clientY; // 현재 터치 Y 좌표
+    const distance = currentTouchY - initialTouchY; // 이동 거리
+
+    // 거리의 변화를 통해 속도 조정
+    if (distance < 0) { // 위로 드래그
+        starSpeed = Math.min(20, starSpeed + Math.abs(distance) / 50); // 최대 속도 제한
+    } else if (distance > 0) { // 아래로 드래그
+        starSpeed = Math.max(0.1, starSpeed - distance / 50); // 최소 속도 제한
+    }
+});
+
+// 터치 종료 이벤트
+mainCanvas.addEventListener("touchend", function(event) {
+    // 터치 종료 시 속도를 리셋하거나 다른 동작을 추가할 수 있습니다.
+});
+
+document.addEventListener("mousemove", function(event) {
+    starSpeed = mapValue(event.clientX, 0, GAME_WIDTH, 0.1, 20);
+});
+
 function randomRange(min, max) {
     return Math.random() * (max - min) + min;
 }
-  
-function drawLine(context, x1, y1, x2, y2) {
-    context.beginPath();
-    context.moveTo(x1, y1);
-    context.lineTo(x2, y2);
-    context.stroke();
-}
-
-let mouseX = 0;
-let mouseY = 0;
-
-function updateMousePosition(event) {
-  mouseX = event.clientX;
-  mouseY = event.clientY;
-}
-
-document.addEventListener("mousemove", updateMousePosition);
 
 function spawnStar()
 {
@@ -36,11 +55,11 @@ function spawnStar()
     star.x = randomRange(-GAME_WIDTH, GAME_WIDTH);
     star.y = randomRange(-GAME_HEIGHT, GAME_HEIGHT);
     star.z = randomRange(0, GAME_WIDTH);
-
     star.prevZ = star.z;
-    star.update = updateStar;
-    star.draw = drawStar;
-
+    star.prevPrevZ = star.z;
+    star.prevCounting = 0;
+    star.isBlinking = false;
+    star.brightness = 0;
     return star;
 }
 
@@ -55,64 +74,143 @@ function updateStar(star)
     }
 }
 
-function drawStar(context, star)
-{
-    context.fillStyle = "white";
-    context.strokeStyle = "transparent";
+function drawLine(context, x1, y1, x2, y2) {
     context.beginPath();
+    let alpha = mapValue(starSpeed, 0, 20, 0.1, 0.9);
+    let lineWidth = mapValue(starSpeed, 0, 20, 0.1, 2);
+    context.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+    context.lineWidth = lineWidth;
+    context.moveTo(x1, y1);
+    context.lineTo(x2, y2);
+    context.stroke();
+}
 
+let brightnessSign = 1;
+function drawStar(context, star, dtBlink)
+{
     let offsetX = GAME_WIDTH / 2;
     let offsetY = GAME_HEIGHT / 2;
 
     let scaledX = mapValue(star.x/star.z, 0, 1, 0, GAME_WIDTH);
     let scaledY = mapValue(star.y/star.z, 0, 1, 0, GAME_HEIGHT);
     
-    let r = mapValue(star.z, 0, GAME_WIDTH, 1, 0);
+    let r = Math.max(mapValue(star.z, 0, GAME_WIDTH, 3, 0), 0.1);
+    
+    context.fillStyle = "white";
+    context.strokeStyle = "transparent";
+    context.beginPath();
     context.ellipse(scaledX + offsetX, scaledY + offsetY, r, r, Math.PI / 2, 0, 2 * Math.PI);
     context.fill();
+
+    if (star.isBlinking) {
+        if(dtBlink > starBlinkInterval * 0.5){
+            brightnessSign = -1;
+        }
+        else{
+            brightnessSign = 1;
+        }
+        star.brightness += 2 * brightnessSign;
+        drawGlowEffect(context, scaledX + offsetX, scaledY + offsetY, r, star.brightness);
+    }
 
     let px = mapValue(star.x/star.prevZ, 0, 1, 0, GAME_WIDTH);
     let py = mapValue(star.y/star.prevZ, 0, 1, 0, GAME_HEIGHT);
 
     star.prevZ = star.z;
-    context.strokeStyle = "white";
+    context.fillStyle = "white";
     drawLine(context, px + offsetX, py + offsetY, scaledX + offsetX, scaledY + offsetY);
 }
 
-let stars = [];
-function createStars()
-{
-    for (let index = 0; index < 1000; index++) {       
-        stars.push(spawnStar());
+// 빛무리와 십자가 효과 그리기
+function drawGlowEffect(context, scaledX, scaledY, r, brightness) {
+    
+    var a = mapValue(brightness, 0, 100, 0, 0.2);
+    // 빛무리 추가
+    context.beginPath();
+    context.fillStyle = `rgba(255, 215, 100, ${a})`;
+    context.ellipse(scaledX, scaledY, r * 4, r * 4, Math.PI / 2, 0, 2 * Math.PI);
+    context.fill();
+    a = mapValue(brightness, 0, 100, 0, 0.5);
+    // 십자가형 반짝임 추가
+    context.strokeStyle = `rgba(255, 255, 200, ${a})`;
+    context.lineWidth = 0.5;
+    context.beginPath();
+    context.moveTo(scaledX, scaledY - r * 4);
+    context.lineTo(scaledX, scaledY + r * 4);
+    context.moveTo(scaledX - r * 4, scaledY);
+    context.lineTo(scaledX + r * 4, scaledY);
+    context.stroke();
+}
+
+
+let blinkStars = [];
+let minBlinkCount = 300;
+function setRandomBlinkIndexes(lowZStars){
+    const indexes = Array.from({ length: lowZStars.length }, (_, index) => index);
+    
+    for (let i = indexes.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indexes[i], indexes[j]] = [indexes[j], indexes[i]];
+    }
+    return indexes;
+}
+
+function blinkRandomStars() {
+    blinkStars.forEach(prevStar => {
+        prevStar.isBlinking = false;
+    });
+    blinkStars = []; // 이전 반짝임 초기화
+
+    let targetZValue = GAME_WIDTH * 0.33;
+    const lowZStars = stars.filter(star => star.z < targetZValue);
+    let blinkCount = Math.min(minBlinkCount, lowZStars.length);
+    let randomIndexes = setRandomBlinkIndexes(lowZStars);
+
+    for (let i = 0; i < blinkCount; i++) {
+        const star = lowZStars[randomIndexes[i]];
+        star.isBlinking = true;
+        star.brightness = 0;
+        brightnessSign = 1;
+        blinkStars.push(star);
     }
 }
 
-function setup()
-{
-    createStars();
-}
-
-let starSpeed = 0;
+let starBlinkInterval = 3000;
+let lastBlinkTime = 0;
 let lastTime = 0;
+let starSpeed = 0;
+let dtBlink = 0;
 function gameLoop(timestamp){
     let dt = timestamp - lastTime;
     lastTime = timestamp;
-    starSpeed = mapValue(mouseX, 0, GAME_WIDTH, 0, 10);
+    dtBlink = timestamp - lastBlinkTime
+    if (starSpeed < 5) {
+        if (dtBlink > starBlinkInterval) {
+            blinkRandomStars();
+            lastBlinkTime = timestamp;
+        }
+    }
+
     context.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
     context.fillStyle = "black";
     context.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
     for (let index = 0; index < stars.length; index++) {       
         updateStar(stars[index]);
-        drawStar(context, stars[index]);
+        drawStar(context, stars[index], dtBlink);
     }
 
     requestAnimationFrame(gameLoop);
 }
 
-mainCanvas.style.position = "absolute";
-mainCanvas.style.left = "50%";
-mainCanvas.style.top = "50%";
-mainCanvas.style.transform = "translate(-50%, -50%)";
+let stars = [];
+function createStars(starCount)
+{
+    stars = [];
+    for (let index = 0; index < starCount; index++) {       
+        stars.push(spawnStar());
+    }
+}
 
-setup();
+createStars(2000);
 requestAnimationFrame(gameLoop);
+
